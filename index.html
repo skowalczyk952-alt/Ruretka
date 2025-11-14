@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruletka</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .auth-container, .lobby-list, .lobby-room { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        h1, h2 { color: #1e3c72; margin-bottom: 20px; text-align: center; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #333; font-weight: bold; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+        input:focus { outline: none; border-color: #1e3c72; }
+        button { width: 100%; padding: 12px; background: #1e3c72; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #2a5298; }
+        .error { color: #d32f2f; font-size: 14px; margin-top: 5px; }
+        .success { color: #388e3c; font-size: 14px; margin-top: 5px; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-buttons button { flex: 1; }
+        .tab-buttons button.active { background: #2a5298; }
+        .lobby-item { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .lobby-info h3 { color: #1e3c72; margin-bottom: 5px; }
+        .lobby-info p { color: #666; font-size: 14px; }
+        .lobby-item button { width: auto; padding: 8px 20px; margin: 0; }
+        .lobby-actions { display: flex; gap: 10px; }
+        .player-list { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; margin-bottom: 5px; border-radius: 5px; }
+        .player-actions button { width: auto; padding: 5px 15px; margin: 0 0 0 5px; font-size: 14px; }
+        
+        .admin-badge {
+            background: #ff9800;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .delete-btn {
+            background: #d32f2f !important;
+            padding: 8px 15px !important;
+        }
+        
+        .delete-btn:hover {
+            background: #b71c1c !important;
+        }
+        
+        .roulette-board { 
+            background: #0a5f0a; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        
+        .board-wrapper {
+            min-width: 900px;
+        }
+        
+        .zero-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .numbers-section {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 4px;
+            flex: 1;
+        }
+        
+        .rows-column {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 80px;
+        }
+        
+        .row-bet {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1e3c72;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.2s;
+            position: relative;
+            padding: 8px;
+            font-size: 13px;
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .row-bet:active {
+            background: #2a5298;
+            transform: scale(0.95);
+        }
+        
+        .bet-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            position: relative;
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: all 0.2s;
+            min-height: 60px;
+        }
+        
+        .bet-cell:active {
+            transform: scale(0.95);
+        }
+        
+        .bet-cell.red { background: #c41e3a; color: white; }
+        .bet-cell.black { background: #1a1a1a; color: white; }
+        .bet-cell.green { background: #0a7f0a; color: white; }
+        
+        .bet-amount {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            background: #ffd700;
+            color: #000;
+            padding: 3px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            line-height: 1;
+        }
+        
+        .outside-bets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .outside-bet {
+            padding: 20px 10px;
+            background: #1e3c72;
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            font-weight: bold;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+            font-size: 14px;
+            line-height: 1.4;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .outside-bet:active {
+            background: #2a5298;
+            transform: scale(0.95);
+        }
+        
+        .dozens-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .bet-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .bet-controls button {
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0;
+            width: 100%;
+        }
+        
+        .bet-controls button.selected {
+            background: #ffd700;
+            color: #000;
+            border: 3px solid #fff;
+        }
+        
+        .bet-controls button.special {
+            grid-column: span 2;
+        }
+        
+        .balance-display {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .balance-display h3 {
+            color: #1e3c72;
+            font-size: 20px;
+        }
+        
+        .game-status {
+            background: #fff3cd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            color: #856404;
+        }
+        
+        .game-status.accepting {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .game-status.spinning {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .dealer-controls {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .user-info {
+            color: black;
+            font-weight: bold;
+        }
+        
+        .logout-btn {
+            width: auto;
+            padding: 8px 20px;
+            margin: 0;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-buttons button {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .roulette-wheel-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            background: #0a5f0a;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            border: 15px solid #8B7355;
+        }
+
+        .wheel-pointer {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #FFD700;
+            z-index: 10;
+            filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5));
+        }
+
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: #FFD700;
+            border-radius: 50%;
+            z-index: 5;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .wheel-segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0 0;
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+        }
+
+        .segment-number {
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .result-display {
+            background: #FFD700;
+            color: #000;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .auth-container, .lobby-list, .lobby-room { padding: 15px; }
+            .roulette-board { padding: 10px; }
+            
+            .board-wrapper {
+                min-width: 100%;
+            }
+            
+            .bet-cell { 
+                font-size: 14px; 
+                min-height: 45px;
+            }
+            
+            .rows-column {
+                width: 60px;
+            }
+            
+            .row-bet {
+                font-size: 11px;
+                min-height: 45px;
+                padding: 4px;
+            }
+            
+            .outside-bet { 
+                padding: 16px 8px; 
+                font-size: 13px;
+                min-height: 65px;
+            }
+            
+            .balance-display h3 { font-size: 18px; }
+            .bet-controls { 
+                grid-template-columns: repeat(3, 1fr);
+                gap: 6px;
+            }
+            .bet-controls button {
+                padding: 10px;
+                font-size: 14px;
+            }
+            
+            .outside-bets-grid {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+            
+            .wheel-wrapper {
+                width: 300px;
+                height: 300px;
+            }
+            .segment-number {
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .bet-cell { 
+                font-size: 12px; 
+                min-height: 40px;
+            }
+            
+            .rows-column { 
+                width: 50px; 
+            }
+            
+            .row-bet {
+                font-size: 10px;
+                min-height: 40px;
+                padding: 3px;
+            }
+            
+            .outside-bet {
+                padding: 14px 6px;
+                font-size: 12px;
+                min-height: 60px;
+            }
+            
+            .bet-amount {
+                font-size: 9px;
+                padding: 2px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loadingScreen" class="auth-container">
+            <h2>🎰 Łączenie...</h2>
+        </div>
+        
+        <div id="authScreen" class="auth-container" style="display:none;">
+            <h1>🎰 Ruletka Europejska</h1>
+            <div class="tab-buttons">
+                <button id="loginTab" class="active">Logowanie</button>
+                <button id="registerTab">Rejestracja</button>
+            </div>
+            <div id="loginForm">
+                <div class="input-group"><label>Nazwa:</label><input type="text" id="loginUsername"></div>
+                <div class="input-group"><label>Hasło:</label><input type="password" id="loginPassword"></div>
+                <button id="loginButton">Zaloguj</button>
+                <div id="loginError" class="error"></div>
+            </div>
+            <div id="registerForm" style="display:none;">
+                <div class="input-group"><label>Nazwa:</label><input type="text" id="registerUsername"></div>
+                <div class="input-group"><label>Hasło:</label><input type="password" id="registerPassword"></div>
+                <div class="input-group"><label>Powtórz:</label><input type="password" id="registerPasswordConfirm"></div>
+                <button id="registerButton">Zarejestruj</button>
+                <div id="registerError" class="error"></div>
+                <div id="registerSuccess" class="success"></div>
+            </div>
+        </div>
+        
+        <div id="lobbyListScreen" class="lobby-list" style="display:none;">
+            <div class="header-bar">
+                <div class="user-info">
+                    <span id="currentUsername"></span>
+                    <span id="adminBadge" class="admin-badge" style="display:none;">ADMIN</span>
+                </div>
+                <button class="logout-btn" id="logoutButton">Wyloguj</button>
+            </div>
+            <h1>Dostępne lobby</h1>
+            <button id="createLobbyButton">+ Utwórz lobby</button>
+            <div id="createLobbyForm" style="display:none; margin-top:20px; padding:20px; background:#f5f5f5; border-radius:8px;">
+                <h3>Utwórz lobby</h3>
+                <div class="input-group"><label>Nazwa:</label><input type="text" id="lobbyName"></div>
+                <div class="input-group"><label>Start $:</label><input type="number" id="startingMoney" value="5000" min="100"></div>
+                <div class="input-group">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="enableWheel" style="width:auto; margin-right:10px;">
+                        <span>Włącz animację koła ruletki 🎡</span>
+                    </label>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="confirmCreateLobby">Utwórz</button>
+                    <button id="cancelCreateLobby" style="background:#666;">Anuluj</button>
+                </div>
+            </div>
+            <h2 style="margin-top:30px;">Dostępne:</h2>
+            <div id="lobbyListContainer"></div>
+        </div>
+        
+        <div id="lobbyRoomScreen" class="lobby-room" style="display:none;">
+            <div class="header-bar">
+                <div class="user-info">
+                    <span id="lobbyUsername"></span> | 
+                    <span id="lobbyBalance">1000</span> żetonów
+                    <span id="hostLabel" style="margin-left:15px;"></span>
+                </div>
+                <button class="logout-btn" id="leaveLobbyButton">Opuść</button>
+            </div>
+            <h1 id="lobbyTitle"></h1>
+            
+            <div id="dealerControls" style="display:none;">
+                <div class="dealer-controls">
+                    <h3>Panel krupiera</h3>
+                    <button id="startRoundButton">Rozpocznij rundę</button>
+                    <button id="stopBettingButton">Zakończ stawianie</button>
+                    <div class="input-group"><label>Wynik (0-36):</label><input type="number" id="resultNumber" min="0" max="36"></div>
+                    <button id="announceResultButton">Ogłoś wynik</button>
+                </div>
+                <div class="player-list"><h3>Gracze:</h3><div id="playerListDealer"></div></div>
+            </div>
+            
+            <div id="playerView">
+                <div class="game-status" id="gameStatus">Oczekiwanie...</div>
+                
+                <div id="wheelContainer" class="roulette-wheel-container" style="display:none;">
+                    <div class="wheel-wrapper">
+                        <div class="wheel-pointer"></div>
+                        <div class="wheel" id="rouletteWheel"></div>
+                        <div class="wheel-center"></div>
+                    </div>
+                </div>
+                <div id="resultDisplay" class="result-display"></div>
+                
+                <div class="balance-display"><h3 id="playerBalance">5000 żetonów</h3></div>
+                
+                <div id="bettingInterface" style="display:none;">
+                    <div class="bet-controls">
+                        <button onclick="selectChip(1)" id="chip1">1</button>
+                        <button onclick="selectChip(5)" id="chip5">5</button>
+                        <button onclick="selectChip(10)" id="chip10">10</button>
+                        <button onclick="selectChip(25)" id="chip25">25</button>
+                        <button onclick="selectChip(50)" id="chip50">50</button>
+                        <button onclick="selectChip(100)" id="chip100">100</button>
+                        <button onclick="selectChip(250)" id="chip250">250</button>
+                        <button onclick="selectChip(500)" id="chip500">500</button>
+                        <button onclick="selectChip(1000)" id="chip1000">1000</button>
+                        <button onclick="selectChip(2500)" id="chip2500">2500</button>
+                        <button onclick="selectChip(5000)" id="chip5000">5000</button>
+                        <button onclick="selectChip(10000)" id="chip10000">10K</button>
+                        <button onclick="selectAllIn()" id="chipAllin" class="special" style="background:#ff9800;">ALL IN</button>
+                        <button onclick="clearBets()" class="special" style="background:#d32f2f;">Wyczyść</button>
+                    </div>
+                    
+                    <div class="roulette-board" id="rouletteBoard">
+                        <div class="board-wrapper">
+                            <div class="zero-row">
+                                <div class="bet-cell green" onclick="placeBet('num_0')">
+                                    0
+                                    <span class="bet-amount" id="bet_num_0"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="numbers-section">
+                                <div class="numbers-grid" id="numbersGrid"></div>
+                                <div class="rows-column">
+                                    <div class="row-bet" onclick="placeBet('row3')">
+                                        3:1<br><small>R3</small>
+                                        <span class="bet-amount" id="bet_row3"></span>
+                                    </div>
+                                    <div class="row-bet" onclick="placeBet('row2')">
+                                        3:1<br><small>R2</small>
+                                        <span class="bet-amount" id="bet_row2"></span>
+                                    </div>
+                                    <div class="row-bet" onclick="placeBet('row1')">
+                                        3:1<br><small>R1</small>
+                                        <span class="bet-amount" id="bet_row1"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="dozens-row">
+                                <div class="outside-bet" onclick="placeBet('dozen1')">
+                                    1-12<br><small>(3:1)</small>
+                                    <span class="bet-amount" id="bet_dozen1"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('dozen2')">
+                                    13-24<br><small>(3:1)</small>
+                                    <span class="bet-amount" id="bet_dozen2"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('dozen3')">
+                                    25-36<br><small>(3:1)</small>
+                                    <span class="bet-amount" id="bet_dozen3"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="outside-bets-grid">
+                                <div class="outside-bet" onclick="placeBet('low')">
+                                    1-18<br><small>(2:1)</small>
+                                    <span class="bet-amount" id="bet_low"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('even')">
+                                    PARZYSTE<br><small>(2:1)</small>
+                                    <span class="bet-amount" id="bet_even"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('red')">
+                                    🔴<br><small>(2:1)</small>
+                                    <span class="bet-amount" id="bet_red"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('black')">
+                                    ⚫<br><small>(2:1)</small>
+                                    <span class="bet-amount" id="bet_black"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('odd')">
+                                    NIEPARZYSTE<br><small>(2:1)</small>
+                                    <span class="bet-amount" id="bet_odd"></span>
+                                </div>
+                                <div class="outside-bet" onclick="placeBet('high')">
+                                    19-36<br><small>(2:1)</small>
+                                    <span class="bet-amount" id="bet_high"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="playerManageModal" class="modal">
+            <div class="modal-content">
+                <h2>Gracz: <span id="managePlayerName"></span></h2>
+                <div class="input-group"><label>Żetony:</label><input type="number" id="giveAmount" placeholder="+/-"></div>
+                <div class="modal-buttons">
+                    <button id="giveMoneyButton">Wykonaj</button>
+                    <button id="kickPlayerButton" style="background:#d32f2f;">Wyrzuć</button>
+                    <button id="banPlayerButton" style="background:#b71c1c;">Ban</button>
+                    <button id="transferDealerButton" style="background:#f57c00;">Przekaż krupiera</button>
+                    <button id="closePlayerModalButton" style="background:#666;">Anuluj</button>
+                </div>
+                <p style="margin-top:10px; font-size:13px; color:#666;">
+                    Uwaga: tylko host (krupier) widzi te akcje. Przekazanie krupiera ustawi wybranego gracza jako nowego hosta.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, update, onValue, push, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtmCFVh-cphMHie6G4Z6ZsFhWEQ1VUd14",
+            authDomain: "ruletka-a4d14.firebaseapp.com",
+            databaseURL: "https://ruletka-a4d14-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "ruletka-a4d14",
+            storageBucket: "ruletka-a4d14.firebasestorage.app",
+            messagingSenderId: "546362398339",
+            appId: "1:546362398339:web:a87571cd9dcc72434aadb6"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        let currentUser = null, currentLobbyId = null, selectedChip = 10, selectedPlayer = null, lobbyUnsub = null;
+        let isAdmin = false;
+        let isAllIn = false;
+        const ADMIN_USERNAME = 'sebs20109';
+        const redNums = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+
+        function getPayoutMultiplier(betType) {
+            if (betType.startsWith('num_')) return 35;
+            if (['red', 'black', 'even', 'odd', 'low', 'high'].includes(betType)) return 2;
+            if (betType.startsWith('dozen')) return 3;
+            if (betType.startsWith('row')) return 4;
+            return 2;
+        }
+
+        function checkWin(betType, result) {
+            if (betType === `num_${result}`) return true;
+            if (betType === 'red' && redNums.includes(result)) return true;
+            if (betType === 'black' && result !== 0 && !redNums.includes(result)) return true;
+            if (betType === 'even' && result !== 0 && result % 2 === 0) return true;
+            if (betType === 'odd' && result % 2 === 1) return true;
+            if (betType === 'low' && result >= 1 && result <= 18) return true;
+            if (betType === 'high' && result >= 19 && result <= 36) return true;
+            if (betType === 'dozen1' && result >= 1 && result <= 12) return true;
+            if (betType === 'dozen2' && result >= 13 && result <= 24) return true;
+            if (betType === 'dozen3' && result >= 25 && result <= 36) return true;
+            if (betType === 'row1' && result > 0 && (result - 1) % 3 === 0) return true;
+            if (betType === 'row2' && result > 0 && (result - 2) % 3 === 0) return true;
+            if (betType === 'row3' && result > 0 && result % 3 === 0) return true;
+            return false;
+        }
+
+        function buildNumbersGrid() {
+            const grid = document.getElementById('numbersGrid');
+            const layout = [
+                [3,6,9,12,15,18,21,24,27,30,33,36],
+                [2,5,8,11,14,17,20,23,26,29,32,35],
+                [1,4,7,10,13,16,19,22,25,28,31,34]
+            ];
+            
+            grid.innerHTML = '';
+            layout.forEach(row => {
+                row.forEach(num => {
+                    const color = redNums.includes(num) ? 'red' : 'black';
+                    const cell = document.createElement('div');
+                    cell.className = `bet-cell ${color}`;
+                    cell.onclick = () => placeBet(`num_${num}`);
+                    cell.innerHTML = `${num}<span class="bet-amount" id="bet_num_${num}"></span>`;
+                    grid.appendChild(cell);
+                });
+            });
+        }
+
+        function createWheel() {
+            const wheel = document.getElementById('rouletteWheel');
+            if (!wheel) return;
+            
+            const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+            const totalSegments = 37;
+            const anglePerSegment = 360 / totalSegments;
+            
+            wheel.innerHTML = '';
+            
+            numbers.forEach((num, index) => {
+                const segment = document.createElement('div');
+                segment.className = 'wheel-segment';
+                
+                const isRed = redNums.includes(num);
+                const color = num === 0 ? '#0a7f0a' : (isRed ? '#c41e3a' : '#1a1a1a');
+                
+                segment.style.background = color;
+                segment.style.transform = `rotate(${index * anglePerSegment}deg) skewY(-${90 - anglePerSegment}deg)`;
+                
+                const numberLabel = document.createElement('span');
+                numberLabel.className = 'segment-number';
+                numberLabel.textContent = num;
+                segment.appendChild(numberLabel);
+                
+                wheel.appendChild(segment);
+            });
+        }
+
+        function spinWheel(result) {
+            const wheel = document.getElementById('rouletteWheel');
+            const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+            
+            const resultIndex = numbers.indexOf(result);
+            const anglePerSegment = 360 / 37;
+            const targetAngle = resultIndex * anglePerSegment;
+            
+            const spins = 5;
+            const finalRotation = (spins * 360) + (360 - targetAngle) - (anglePerSegment / 2);
+            
+            wheel.style.transform = `rotate(${finalRotation}deg)`;
+            
+            setTimeout(() => {
+                const resultDisplay = document.getElementById('resultDisplay');
+                const isRed = redNums.includes(result);
+                const color = result === 0 ? '#0a7f0a' : (isRed ? '#c41e3a' : '#1a1a1a');
+                
+                resultDisplay.style.background = color;
+                resultDisplay.style.color = 'white';
+                resultDisplay.textContent = `Wynik: ${result}`;
+                resultDisplay.style.display = 'block';
+                
+                setTimeout(() => {
+                    resultDisplay.style.display = 'none';
+                }, 5000);
+            }, 4000);
+        }
+
+        window.selectChip = function(value) {
+            selectedChip = value;
+            isAllIn = false;
+            document.querySelectorAll('.bet-controls button').forEach(btn => btn.classList.remove('selected'));
+            const chipId = `chip${value}`;
+            const btn = document.getElementById(chipId);
+            if (btn) btn.classList.add('selected');
+        }
+
+        window.selectAllIn = function() {
+            isAllIn = true;
+            selectedChip = 0;
+            document.querySelectorAll('.bet-controls button').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('chipAllin').classList.add('selected');
+        }
+
+        window.placeBet = async function(betType) {
+            if (!currentLobbyId) {
+                console.error('Brak lobby ID');
+                return;
+            }
+            
+            try {
+                const lobbyRef = ref(db, `lobbies/${currentLobbyId}`);
+                const snap = await get(lobbyRef);
+                
+                if (!snap.exists()) {
+                    alert('Lobby nie istnieje');
+                    return;
+                }
+                
+                const lobby = snap.val();
+                
+                if (lobby.gameState !== 'betting') {
+                    alert('Nie można teraz stawiać zakładów');
+                    return;
+                }
+                
+                const player = lobby.players ? lobby.players[currentUser.username] : null;
+                if (!player) {
+                    alert('Nie znaleziono gracza');
+                    return;
+                }
+                
+                let betAmount = selectedChip;
+                
+                if (isAllIn) {
+                    betAmount = player.balance;
+                }
+                
+                if (player.balance < betAmount) {
+                    alert('Za mało środków');
+                    return;
+                }
+                
+                if (betAmount <= 0) {
+                    alert('Nieprawidłowa kwota');
+                    return;
+                }
+                
+                const newBal = player.balance - betAmount;
+                const currentBet = (player.bets && player.bets[betType]) ? player.bets[betType] : 0;
+                const newBet = currentBet + betAmount;
+                
+                const updates = {};
+                updates[`lobbies/${currentLobbyId}/players/${currentUser.username}/balance`] = newBal;
+                updates[`lobbies/${currentLobbyId}/players/${currentUser.username}/bets/${betType}`] = newBet;
+                
+                await update(ref(db), updates);
+                updateBetDisplay(betType, newBet);
+                
+            } catch (e) {
+                console.error('Błąd stawiania:', e);
+                alert('Błąd: ' + e.message);
+            }
+        }
+
+        function updateBetDisplay(betType, amount) {
+            const el = document.getElementById(`bet_${betType}`);
+            if (el) el.textContent = amount > 0 ? amount : '';
+        }
+
+        window.clearBets = async function() {
+            if (!currentLobbyId) return;
+            try {
+                const snap = await get(ref(db, `lobbies/${currentLobbyId}`));
+                const lobby = snap.val();
+                if (lobby.gameState !== 'betting') return alert('Nie można czyścić');
+                const player = lobby.players[currentUser.username];
+                const bets = player.bets || {};
+                let total = 0;
+                Object.values(bets).forEach(amt => { total += amt; });
+                const updates = {};
+                updates[`lobbies/${currentLobbyId}/players/${currentUser.username}/balance`] = player.balance + total;
+                updates[`lobbies/${currentLobbyId}/players/${currentUser.username}/bets`] = {};
+                await update(ref(db), updates);
+                Object.keys(bets).forEach(betType => { updateBetDisplay(betType, 0); });
+            } catch (e) { alert('Błąd'); }
+        }
+
+        window.deleteLobbyFunc = async function(lobbyId) {
+            if (!isAdmin) {
+                alert('Brak uprawnień!');
+                return;
+            }
+            
+            if (!confirm('Czy na pewno chcesz usunąć to lobby? Wszyscy gracze zostaną wyrzuceni.')) {
+                return;
+            }
+            
+            try {
+                await remove(ref(db, `lobbies/${lobbyId}`));
+                alert('Lobby zostało usunięte');
+            } catch (error) {
+                console.error('Błąd usuwania lobby:', error);
+                alert('Nie udało się usunąć lobby: ' + error.message);
+            }
+        }
+
+        async function init() {
+            try {
+                const usersRef = ref(db, 'users/sebs20109');
+                const snap = await get(usersRef);
+                if (!snap.exists()) await set(usersRef, { username: 'sebs20109', password: 'Sebs@20109' });
+                setupListeners();
+                watchLobbies();
+                buildNumbersGrid();
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('authScreen').style.display = 'block';
+            } catch (e) { alert('Błąd: ' + e.message); }
+        }
+
+        function setupListeners() {
+            document.getElementById('loginTab').onclick = () => { document.getElementById('loginTab').classList.add('active'); document.getElementById('registerTab').classList.remove('active'); document.getElementById('loginForm').style.display = 'block'; document.getElementById('registerForm').style.display = 'none'; };
+            document.getElementById('registerTab').onclick = () => { document.getElementById('registerTab').classList.add('active'); document.getElementById('loginTab').classList.remove('active'); document.getElementById('registerForm').style.display = 'block'; document.getElementById('loginForm').style.display = 'none'; };
+            document.getElementById('loginButton').onclick = login;
+            document.getElementById('registerButton').onclick = register;
+            document.getElementById('logoutButton').onclick = logout;
+            document.getElementById('createLobbyButton').onclick = () => document.getElementById('createLobbyForm').style.display = 'block';
+            document.getElementById('confirmCreateLobby').onclick = createLobby;
+            document.getElementById('cancelCreateLobby').onclick = () => document.getElementById('createLobbyForm').style.display = 'none';
+            document.getElementById('leaveLobbyButton').onclick = leaveLobby;
+            document.getElementById('startRoundButton').onclick = startRound;
+            document.getElementById('stopBettingButton').onclick = stopBetting;
+            document.getElementById('announceResultButton').onclick = announceResult;
+            document.getElementById('giveMoneyButton').onclick = giveMoney;
+            document.getElementById('kickPlayerButton').onclick = kickPlayer;
+            document.getElementById('banPlayerButton').onclick = banPlayer;
+            document.getElementById('transferDealerButton').onclick = transferDealer;
+            document.getElementById('closePlayerModalButton').onclick = closePlayerModal;
+        }
+
+        function watchLobbies() {
+            onValue(ref(db, 'lobbies'), (snap) => {
+                const lobbies = snap.val() || {};
+                const container = document.getElementById('lobbyListContainer');
+                const entries = Object.entries(lobbies);
+                if (entries.length === 0) container.innerHTML = '<p style="text-align:center;color:#666;">Brak lobby</p>';
+                else container.innerHTML = entries.map(([id, l]) => {
+                    const pc = l.players ? Object.keys(l.players).length : 0;
+                    const wheelIcon = l.wheelEnabled ? ' 🎡' : '';
+                    const deleteBtn = isAdmin ? `<button class="delete-btn" onclick="window.deleteLobbyFunc('${id}')">🗑️ Usuń</button>` : '';
+                    return `<div class="lobby-item">
+                        <div class="lobby-info">
+                            <h3>${l.name}${wheelIcon} 🌐</h3>
+                            <p>Host: ${l.host} | Gracze: ${pc} | Start: ${l.startingMoney}</p>
+                        </div>
+                        <div class="lobby-actions">
+                            <button onclick="window.joinLobbyFunc('${id}')">Dołącz</button>
+                            ${deleteBtn}
+                        </div>
+                    </div>`;
+                }).join('');
+            });
+        }
+
+        async function register() {
+            const user = document.getElementById('registerUsername').value.trim();
+            const pass = document.getElementById('registerPassword').value;
+            const conf = document.getElementById('registerPasswordConfirm').value;
+            const err = document.getElementById('registerError');
+            const succ = document.getElementById('registerSuccess');
+            err.textContent = ''; succ.textContent = '';
+            if (!user || !pass) return err.textContent = 'Wypełnij pola';
+            if (pass !== conf) return err.textContent = 'Hasła różne';
+            try {
+                const userRef = ref(db, `users/${user}`);
+                if ((await get(userRef)).exists()) return err.textContent = 'Użytkownik istnieje';
+                await set(userRef, { username: user, password: pass });
+                succ.textContent = 'Utworzono!';
+                document.getElementById('registerUsername').value = '';
+                document.getElementById('registerPassword').value = '';
+                document.getElementById('registerPasswordConfirm').value = '';
+            } catch (e) { err.textContent = 'Błąd: ' + e.message; }
+        }
+
+        async function login() {
+            const user = document.getElementById('loginUsername').value.trim();
+            const pass = document.getElementById('loginPassword').value;
+            const err = document.getElementById('loginError');
+            err.textContent = '';
+            try {
+                const snap = await get(ref(db, `users/${user}`));
+                if (!snap.exists() || snap.val().password !== pass) return err.textContent = 'Błędne dane';
+                currentUser = { username: user };
+                isAdmin = (user === ADMIN_USERNAME);
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('lobbyListScreen').style.display = 'block';
+                document.getElementById('currentUsername').textContent = user;
+                if (isAdmin) {
+                    document.getElementById('adminBadge').style.display = 'inline-block';
+                }
+            } catch (e) { err.textContent = 'Błąd: ' + e.message; }
+        }
+
+        function logout() {
+            if (lobbyUnsub) lobbyUnsub();
+            currentUser = null; currentLobbyId = null; isAdmin = false;
+            document.getElementById('authScreen').style.display = 'block';
+            document.getElementById('lobbyListScreen').style.display = 'none';
+            document.getElementById('lobbyRoomScreen').style.display = 'none';
+            document.getElementById('adminBadge').style.display = 'none';
+        }
+
+        async function createLobby() {
+            const name = document.getElementById('lobbyName').value.trim();
+            const moneyInput = document.getElementById('startingMoney').value;
+            const money = parseInt(moneyInput);
+            const enableWheel = document.getElementById('enableWheel').checked;
+            
+            if (!name) return alert('Podaj nazwę pokoju!');
+            if (!moneyInput || isNaN(money) || money < 100) return alert('Minimalna kwota startowa to 100!');
+            if (!currentUser || !currentUser.username) return alert('Nie jesteś zalogowany!');
+            
+            try {
+                const lobbiesRef = ref(db, 'lobbies');
+                const newLobbyRef = push(lobbiesRef);
+                const lobbyId = newLobbyRef.key;
+                
+                const lobbyData = {
+                    name: name,
+                    host: currentUser.username,
+                    startingMoney: money,
+                    wheelEnabled: enableWheel,
+                    isPrivate: false,
+                    password: '',
+                    bannedUsers: {},
+                    gameState: 'waiting',
+                    players: {
+                        [currentUser.username]: {
+                            username: currentUser.username,
+                            balance: money,
+                            bets: {}
+                        }
+                    }
+                };
+                
+                await set(newLobbyRef, lobbyData);
+                
+                document.getElementById('createLobbyForm').style.display = 'none';
+                document.getElementById('lobbyName').value = '';
+                document.getElementById('startingMoney').value = '5000';
+                document.getElementById('enableWheel').checked = false;
+                
+                alert(`Pokój "${name}" został utworzony!`);
+                enterLobby(lobbyId);
+            } catch (e) {
+                console.error('Błąd przy tworzeniu pokoju:', e);
+                alert('Nie udało się utworzyć pokoju: ' + e.message);
+            }
+        }
+
+        window.joinLobbyFunc = async function(id) {
+            if (!currentUser || !currentUser.username) {
+                alert('Nie jesteś zalogowany!');
+                return;
+            }
+            
+            try {
+                const snap = await get(ref(db, `lobbies/${id}`));
+                if (!snap.exists()) return alert('Pokój nie istnieje!');
+                
+                const lobby = snap.val();
+                
+                if (lobby.bannedUsers && lobby.bannedUsers[currentUser.username]) {
+                    return alert('Jesteś zbanowany w tym pokoju!');
+                }
+                
+                if (lobby.players && lobby.players[currentUser.username]) {
+                    alert('Już jesteś w tym pokoju!');
+                    enterLobby(id);
+                    return;
+                }
+                
+                await addPlayerToLobby(id, lobby);
+            } catch (e) {
+                console.error('Błąd przy dołączaniu:', e);
+                alert('Błąd: ' + e.message);
+            }
+        }
+
+        async function addPlayerToLobby(id, lobby) {
+            if (!lobby.players || !lobby.players[currentUser.username]) {
+                await set(ref(db, `lobbies/${id}/players/${currentUser.username}`), {
+                    username: currentUser.username,
+                    balance: lobby.startingMoney,
+                    bets: {}
+                });
+            }
+            alert(`Dołączono do pokoju "${lobby.name}"!`);
+            enterLobby(id);
+        }
+
+        function enterLobby(id) {
+            currentLobbyId = id;
+            document.getElementById('lobbyListScreen').style.display = 'none';
+            document.getElementById('lobbyRoomScreen').style.display = 'block';
+            document.getElementById('lobbyUsername').textContent = currentUser.username;
+            if (lobbyUnsub) lobbyUnsub();
+            lobbyUnsub = onValue(ref(db, `lobbies/${id}`), (snap) => {
+                if (!snap.exists()) { alert('Pokój usunięty'); return leaveLobby(); }
+                const lobby = snap.val();
+                document.getElementById('lobbyTitle').textContent = lobby.name;
+                document.getElementById('hostLabel').textContent = `Krupier: ${lobby.host}`;
+                
+                if (!lobby.players || !lobby.players[currentUser.username]) {
+                    if (lobby.host !== currentUser.username) { alert('Zostałeś wyrzucony'); return leaveLobby(); }
+                }
+                if (lobby.host === currentUser.username) {
+                    document.getElementById('dealerControls').style.display = 'block';
+                    document.getElementById('playerView').style.display = 'none';
+                    updatePlayerList(lobby);
+                } else {
+                    document.getElementById('dealerControls').style.display = 'none';
+                    document.getElementById('playerView').style.display = 'block';
+                    updateBalance(lobby);
+                    updateStatus(lobby.gameState);
+                    document.getElementById('bettingInterface').style.display = lobby.gameState === 'betting' ? 'block' : 'none';
+                    
+                    if (lobby.wheelEnabled && lobby.gameState === 'spinning') {
+                        document.getElementById('wheelContainer').style.display = 'flex';
+                        document.getElementById('rouletteBoard').style.display = 'none';
+                        if (!document.getElementById('rouletteWheel').hasChildNodes()) {
+                            createWheel();
+                        }
+                    } else {
+                        document.getElementById('wheelContainer').style.display = 'none';
+                        document.getElementById('rouletteBoard').style.display = 'block';
+                    }
+                    
+                    if (lobby.wheelEnabled && lobby.gameState === 'result' && lobby.currentResult !== undefined && lobby.currentResult !== null) {
+                        spinWheel(lobby.currentResult);
+                    }
+                }
+            });
+        }
+
+        async function leaveLobby() {
+            if (lobbyUnsub) { lobbyUnsub(); lobbyUnsub = null; }
+            if (currentLobbyId) {
+                try {
+                    await remove(ref(db, `lobbies/${currentLobbyId}/players/${currentUser.username}`));
+                    const snap = await get(ref(db, `lobbies/${currentLobbyId}`));
+                    if (snap.exists()) {
+                        const l = snap.val();
+                        if (!l.players || Object.keys(l.players).length === 0) await remove(ref(db, `lobbies/${currentLobbyId}`));
+                    }
+                } catch (e) {}
+            }
+            currentLobbyId = null;
+            document.getElementById('lobbyRoomScreen').style.display = 'none';
+            document.getElementById('lobbyListScreen').style.display = 'block';
+        }
+
+        function updatePlayerList(lobby) {
+            const players = lobby.players || {};
+            document.getElementById('playerListDealer').innerHTML = Object.values(players).map(p => `<div class="player-item"><div><strong>${p.username}</strong> - ${p.balance} ${p.username === lobby.host ? '👑' : ''}</div>${p.username !== lobby.host ? `<div class="player-actions"><button onclick="window.managePlayerFunc('${p.username}')">Zarządzaj</button></div>` : ''}</div>`).join('');
+        }
+
+        window.managePlayerFunc = function(user) { selectedPlayer = user; document.getElementById('managePlayerName').textContent = user; document.getElementById('playerManageModal').style.display = 'block'; }
+        
+        function closePlayerModal() { document.getElementById('playerManageModal').style.display = 'none'; selectedPlayer = null; document.getElementById('giveAmount').value = ''; }
+
+        async function giveMoney() {
+            const amt = parseInt(document.getElementById('giveAmount').value);
+            if (isNaN(amt)) return alert('Podaj kwotę');
+            try {
+                const playerRef = ref(db, `lobbies/${currentLobbyId}/players/${selectedPlayer}`);
+                const snap = await get(playerRef);
+                const player = snap.val();
+                let newBal = player.balance + amt;
+                if (newBal < 0) newBal = 0;
+                await update(playerRef, { balance: newBal });
+                closePlayerModal();
+            } catch (e) { alert('Błąd'); }
+        }
+
+        async function kickPlayer() {
+            if (!confirm('Wyrzucić gracza?')) return;
+            try {
+                await remove(ref(db, `lobbies/${currentLobbyId}/players/${selectedPlayer}`));
+                closePlayerModal();
+            } catch (e) { alert('Błąd'); }
+        }
+
+        async function banPlayer() {
+            if (!confirm('Zbanować gracza?')) return;
+            try {
+                await set(ref(db, `lobbies/${currentLobbyId}/bannedUsers/${selectedPlayer}`), true);
+                await remove(ref(db, `lobbies/${currentLobbyId}/players/${selectedPlayer}`));
+                closePlayerModal();
+            } catch (e) { alert('Błąd'); }
+        }
+
+        async function transferDealer() {
+            if (!currentLobbyId || !selectedPlayer || !currentUser) {
+                alert('Brak wymaganych danych.');
+                return;
+            }
+            
+            try {
+                const lobbyRef = ref(db, `lobbies/${currentLobbyId}`);
+                const snapshot = await get(lobbyRef);
+                
+                if (!snapshot.exists()) {
+                    alert('Pokój nie istnieje!');
+                    return;
+                }
+                
+                const lobbyData = snapshot.val();
+                
+                if (lobbyData.host !== currentUser.username) {
+                    alert('Tylko obecny krupier może przekazać tę funkcję!');
+                    return;
+                }
+                
+                if (!lobbyData.players || !lobbyData.players[selectedPlayer]) {
+                    alert('Wybrany gracz nie znajduje się w pokoju!');
+                    return;
+                }
+                
+                if (!confirm(`Czy na pewno chcesz przekazać funkcję krupiera graczowi ${selectedPlayer}?`)) {
+                    return;
+                }
+                
+                await update(lobbyRef, { host: selectedPlayer });
+                
+                alert(`Przekazano funkcję krupiera graczowi: ${selectedPlayer}`);
+                closePlayerModal();
+                
+            } catch (error) {
+                console.error('Błąd przy przekazywaniu krupiera:', error);
+                alert('Wystąpił błąd: ' + error.message);
+            }
+        }
+
+        async function startRound() {
+            try {
+                const updates = {};
+                updates[`lobbies/${currentLobbyId}/gameState`] = 'betting';
+                const snap = await get(ref(db, `lobbies/${currentLobbyId}`));
+                const lobby = snap.val();
+                const players = lobby.players || {};
+                Object.keys(players).forEach(username => { updates[`lobbies/${currentLobbyId}/players/${username}/bets`] = {}; });
+                await update(ref(db), updates);
+                alert('Runda rozpoczęta!');
+            } catch (e) { alert('Błąd'); }
+        }
+
+        async function stopBetting() {
+            try {
+                const snap = await get(ref(db, `lobbies/${currentLobbyId}`));
+                const lobby = snap.val();
+                
+                await update(ref(db, `lobbies/${currentLobbyId}`), { gameState: 'spinning' });
+                
+                if (lobby.wheelEnabled) {
+                    alert('Zakończono stawianie - gracze zobaczą koło!');
+                } else {
+                    alert('Zakończono stawianie');
+                }
+            } catch (e) { alert('Błąd'); }
+        }
+
+        async function announceResult() {
+            const result = parseInt(document.getElementById('resultNumber').value);
+            if (isNaN(result) || result < 0 || result > 36) return alert('Podaj 0-36');
+            try {
+                const snap = await get(ref(db, `lobbies/${currentLobbyId}`));
+                const lobby = snap.val();
+                
+                if (lobby.wheelEnabled) {
+                    await update(ref(db, `lobbies/${currentLobbyId}`), { 
+                        currentResult: result,
+                        gameState: 'result'
+                    });
+                    
+                    setTimeout(async () => {
+                        await processResult(result);
+                    }, 6000);
+                } else {
+                    await processResult(result);
+                }
+            } catch (e) { alert('Błąd'); }
+        }
+
+        async function processResult(result) {
+            const snap = await get(ref(db, `lobbies/${currentLobbyId}`));
+            const lobby = snap.val();
+            const updates = {};
+            const players = lobby.players || {};
+            
+            Object.entries(players).forEach(([username, player]) => {
+                let win = 0;
+                const bets = player.bets || {};
+                Object.entries(bets).forEach(([betType, amount]) => {
+                    if (checkWin(betType, result)) {
+                        const multiplier = getPayoutMultiplier(betType);
+                        win += amount * multiplier;
+                    }
+                });
+                updates[`lobbies/${currentLobbyId}/players/${username}/balance`] = player.balance + win;
+                updates[`lobbies/${currentLobbyId}/players/${username}/bets`] = {};
+            });
+            
+            updates[`lobbies/${currentLobbyId}/gameState`] = 'waiting';
+            updates[`lobbies/${currentLobbyId}/currentResult`] = null;
+            
+            await update(ref(db), updates);
+            document.getElementById('resultNumber').value = '';
+            alert(`Wynik: ${result}\nRozliczono!`);
+        }
+
+        function updateBalance(lobby) {
+            const player = lobby.players ? lobby.players[currentUser.username] : null;
+            if (player) {
+                document.getElementById('playerBalance').textContent = player.balance + ' żetonów';
+                document.getElementById('lobbyBalance').textContent = player.balance;
+            }
+        }
+
+        function updateStatus(state) {
+            const statusEl = document.getElementById('gameStatus');
+            if (state === 'waiting') { statusEl.textContent = 'Oczekiwanie...'; statusEl.className = 'game-status'; }
+            else if (state === 'betting') { statusEl.textContent = 'Stawiaj! ✅'; statusEl.className = 'game-status accepting'; }
+            else if (state === 'spinning' || state === 'result') { statusEl.textContent = 'Czekaj... 🎲'; statusEl.className = 'game-status spinning'; }
+        }
+
+        init();
+    </script>
+</body>
+</html>
